@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta name="MobileOptimized" content="width">
+<meta name="HandheldFriendly" content="true">
+<meta name="viewport" content="width=device-width">
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  font-family: Helvetica,Arial,sans-serif;
+  font-size: 12px;
+}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.axis text {
+  font: 10px sans-serif;
+}
+#container{
+  width: 800px;
+  margin: 50px auto;
+}
+#chart{
+  margin-top:50px;
+}
+.tooltip {
+  position: absolute;
+  padding: 15px;
+  font: 12px sans-serif;
+  background: #00274E;
+  color: #eee;
+  border: 0px;
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0.9;
+  visibility: hidden;
+  pointer-events: none;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform:translate3d(0,0,0);
+  max-width:220px;
+}
+circle:hover{
+  -webkit-backface-visibility: hidden;
+  -webkit-transform:translate3d(0,0,0);
+}
+#circle{
+  width: 12px;
+  height:12px;
+  border-radius: 6px;
+  background: #E7E5CC;
+  float:right;
+}
+a{
+  color: #0056AC;
+  text-decoration: none;
+}
+h1{
+  font-weight: normal;
+  margin-bottom: 0;
+}
+.annotation-note-label{
+  fill: #999 !important;
+  font-size:11px !important;
+}
+#notes{display: none;}
+@media (max-width: 499px){
+  #notes{display: block !important;}
+  .annotation-group,.annotation-group2,.annotation-group3{
+    display: none;
+  }
+  #container{
+    width:96%;
+    padding-left:4%;
+    margin:0;
+  }
+  #chart{
+    margin:0;
+  }
+  .axis--y path, .axis--y line{
+    display:none;
+  }
+  .axis--y text{
+    fill: #000;
+    stroke:#fff;
+    stroke-width:.01;
+  }
+  ul{
+    margin-left:0;
+    margin-top:-30px;
+    padding-left:20px;
+  }
+  ul li{
+    padding-bottom: 8px;
+  }
+  .ww2{
+    display: none;
+  }
+}
+
+</style>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.2.5/d3-annotation.min.js"></script>
+<body>
+  <div id="container">
+    <h1>a brief history of the World Cup</h1>
+    <p class="intro"></p>
+      <div id="chart"></div>
+      <div style="float:right;margin-top:-110px;"><p style="float:right;margin:0 50px 0 10px;">indicates 2018</p>
+      <div id="circle"></div></div>
+      <div id="notes">
+        <ul>
+          <li>The United States had its best performance in the first World Cup; it's only gone downhill from there.</li>
+          <li>In 1930, the teams were split into four groups, with the winners going on to the semi-finals.</li>
+          <li>Few European teams attended in 1930, as travel to Uruguay was difficult.<br/>In return, Uruguay refused participation in the 1934 Cup held in Italy out of protest.</li>
+          <li>Austria withdrew in'38 as a result of Nazi Germany's annexation of the country.</li>
+          <li>Germany and Japan were banned during the 1950 games.</li>
+          <li>A unique format was used in the 1954 Cup; hence, there were no quarterfinals.</li>
+        </ul>
+      </div>
+  </div>
+
+<script>
+
+d3.csv("cdata-top.csv", function(error, data) {
+  if (error) throw error;
+
+containerwidth = parseInt(d3.select('#chart').style('width'))
+
+var width = containerwidth,
+  height = 750;
+
+var svg = d3.select("#chart")
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height);
+
+var y = d3.scaleLinear().range([60,480]);
+var y2 = d3.scaleLinear().range([60,580]);
+
+if(containerwidth > 500){
+  var x = d3.scaleLinear().range([205, 750]);
+}else if (containerwidth <= 500){
+  var x = d3.scaleLinear().range([25, 320]);
+}
+var h = svg.append("g")
+      .attr("transform", "translate(0,30)");
+
+var j = svg.append("g")
+      .attr('class','ww2')
+      .attr("transform", "translate(290,0)");
+if(containerwidth > 500){
+  hovertap = "hover over dots"
+}else{
+  hovertap = "tap dots"
+}
+
+d3.select('.intro').append('text').html("the furthest round to which each country advanced,1930-2018 <br/><i>" + hovertap +" for country names and details</i>")
+  data.forEach(function(d){
+    d.rank = +d.rank;
+    d.year = + d.year;
+  })
+  var sort = data.sort((a, b) => d3.descending(a, b));
+
+  y.domain(d3.extent(data, function(d) { return d.rank; }));
+  x.domain(d3.extent(data, function(d) { return d.year; }));
+
+  var simulation = d3.forceSimulation(data)
+      .force("y", d3.forceY(function(d) { return y(d.rank); }).strength(.1))
+      .force("x", d3.forceX(function(d) { return x(d.year); }).strength(1))
+      .alpha(10)
+      .stop();
+
+      if(containerwidth > 500){
+        simulation.force("collide", d3.forceCollide(7.5).strength(2.49))
+
+      }else{
+        simulation.force("collide", d3.forceCollide(7.5).strength(1.9))
+      }
+
+  for (var i = 0; i < data.length * 2; ++i) simulation.tick();
+
+  h.append("g")
+      .attr("class", "axis axis--x")
+      .attr("transform", "translate(0," + 0 + ")")
+      .call(d3.axisTop(x).ticks(9).tickFormat(d3.format("d")))
+
+  j.append("line")
+      .attr("transform", "translate(0," + 0 + ")")
+      .style("stroke", "#b3e0ed")
+      .style("stroke-width",1)
+      .attr("x1", 0)
+      .attr("y1", 60)
+      .attr("x2", 2)
+      .attr("y2", 450)
+  j.append("text")
+      .attr("x",10)
+      .attr("y",10)
+      .attr('height',100)
+      .attr('width',100)
+      .attr("transform","translate(3,350)rotate(270)")
+      .text("1942 and 1946 cancelled (World War II)")
+      .style("font-size",11)
+      .attr('fill','#b3e0ed')
+
+      var circles = svg.selectAll('circle')
+                  .data(data)
+                  .enter()
+				          .append("circle");
+
+			circles.attr("r", 6)
+				.attr("cx", function(d){
+          if(d3.select('circle').attr("class")=="Argentina-1930-2"){return 100 }
+          else{return d.x}})
+	    	.attr("cy", function(d){
+          if(d3.select('circle').attr("class")=="Argentina-1930-2"){return 400 }
+          else{return d.y}})
+        .attr("fill", function(d){
+										if (d.country == "None"){return 'none'}
+                    else if(d.year == 2018){return "#E7E5CC"}
+										else if(d.rank == 6){return "#eee"}
+										else if (d.rank == 5){return "#bbb"}
+										else if (d.rank == 4){return '#999'}
+										else if (d.rank == 3){return '#666'}
+										else if (d.rank == 2){return '#333'}
+										else if (d.rank == 1){return '#000'}
+										else{return "#333"}
+								})
+        .attr('class',function(d){return d.country.replace(/\s/g, '') + '-' + d.year + '-' + d.rank})
+        .attr('id',function(d){return d.country.replace(/\s/g, '')})
+        .on("mouseover",function(d){
+            current = d3.select(this).attr("class")
+            currentco = d3.select(this).attr("id")
+            d3.selectAll('circle#'+currentco).attr("fill","#00D686")
+            d3.selectAll('circle:not(#'+currentco+")").attr("opacity",.5)
+            d3.select('g.connectors'+currentco+' path').attr("stroke","#00D686").attr("stroke-width",2)
+            if(d.notes !== undefined){
+              var tooltip_str = d.country + ", " + d.year + '<br/>' + d.notes
+            }else{
+              var tooltip_str = d.country + ", " + d.year
+            }
+            tooltip.html(tooltip_str)
+                .style("visibility", "visible");
+          })
+        .on("mousemove", function(d) {
+          tooltip.style("top", event.pageY - (tooltip.node().clientHeight + 5) + "px")
+              .style("left", event.pageX - (tooltip.node().clientWidth / 2.0) + "px");
+        })
+        .on("mouseout",function(d){
+            current = d3.select(this).attr("class")
+            currentco = d3.select(this).attr("id")
+            d3.selectAll('circle')
+              .attr("opacity",1)
+              .attr("fill",function(d){
+                        if (d.country == "None"){return 'none'}
+                        else if(d.year == 2018){return "#E7E5CC"}
+    										else if(d.rank == 6){return "#eee"}
+    										else if (d.rank == 5){return "#bbb"}
+    										else if (d.rank == 4){return '#999'}
+    										else if (d.rank == 3){return '#666'}
+    										else if (d.rank == 2){return '#333'}
+    										else if (d.rank == 1){return '#000'}
+    										else{return "#333"}
+    								})
+            d3.selectAll('g.connectors'+currentco+' path').attr("stroke-width",0)
+            tooltip.style("visibility", "hidden");
+          })
+
+          var tooltip = d3.select("body").append("div")
+                  .attr("class", "tooltip");
+
+
+      tickLabels = ["Winners","Finals","Semi-Finals","Quarter Finals","Round of 16","Round of 32"]
+      if(containerwidth > 500){
+        var g = svg.append("g")
+            .attr("transform", "translate(185,0)");
+        g.append("g")
+            .attr("class", "axis axis--y")
+            .attr("transform", "translate(0," + 0 + ")")
+            .call(d3.axisLeft(y).ticks(5).tickFormat(function(d,i){ return tickLabels[i] }))
+      }else{
+        var g = svg.append("g")
+            .attr("transform", "translate(75,20)");
+        g.append("g")
+            .attr("class", "axis axis--y")
+            .call(d3.axisLeft(y2).ticks(5).tickFormat(function(d,i){ return tickLabels[i] }))
+      }
+
+
+      // connector lines
+
+    	var byCountry = d3.nest()
+    	  .key(function(d) { return d.country.replace(/\s/g, ''); }).entries(data);
+
+    		var countryNames = d3.values(byCountry).map(function(d) {
+    		  return d.values.map(function(v) { return v.country; }).join(', ');
+    		});
+
+    	for (i = 0; i < countryNames.length; i++){
+    		eaco = countryNames[i].split(',')[0]
+
+      	const filterByCountry = (country, data) => item => item.country === country
+      	connectData = data.filter(filterByCountry(eaco))
+          if (connectData.length >= 2) {
+
+            var linesGroup = svg.append("g").data(connectData)
+              .attr("class", function(d){return "connectors" + d.country.replace(/\s/g, '')});
+
+            var linec = d3.line()
+              .x(function(d) {return d3.select("." + d.country.replace(/\s/g, '') + "-" + d.year + "-" + d.rank).attr("cx");})
+              .y(function(d) {return d3.select("." + d.country.replace(/\s/g, '') + "-" + d.year + "-" + d.rank).attr("cy");});
+
+              linesGroup.datum(connectData)
+              .append("path")
+              .attr("d", linec(connectData))
+              .attr("stroke", "none")
+              .attr("stroke-width", 0)
+              .attr("fill", "none")
+          }
+    	  }
+        const type = d3.annotationCustomType(
+          d3.annotationLabel,
+          {"className":"custom",
+            "connector":{"type":"line",
+            "end":"arrow"},
+            "note":{"align":"middle",
+            "orientation":"topBottom"}})
+
+        const type2 = d3.annotationCustomType(
+          d3.annotationLabel,
+          {"className":"custom",
+            "note":{"align":"middle",
+            "orientation":"topBottom"}})
+
+        const type3 = d3.annotationCustomType(
+          d3.annotationLabel,
+          {"className":"custom",
+            "connector":{"type":"line",
+            "end":"dot"},
+            "note":{"align":"middle",
+            "orientation":"topBottom"}})
+
+          const annotations = [
+            {note: {
+                label: "The United States had its best performance in the first World Cup; it's only gone downhill from there."
+              },
+              data: { country: "United States", year: 1930, rank: 3 },
+              dy: -50,
+              dx: -130
+            }]
+
+        const annotationsNoLine = [
+          {note: {
+              label: "In 1930, the teams were split into four groups, with the winners going on to the semi-finals."
+            },
+            data: { year: 1930, rank: 4 },
+            dy: 35,
+            dx: -140
+          },
+          {
+            note: {
+              label: "Few European teams attended in 1930, as travel to Uruguay was difficult."
+            },
+            data: { year: 1930, rank: 5 },
+            dy: 45,
+            dx: -150
+          },
+          {
+            note: {
+              label: "In return, Uruguay refused participation in the 1934 Cup held in Italy out of protest."
+            },
+            data: { year: 1930, rank: 6 },
+            dy: 40,
+            dx: -90
+          }
+
+        ]
+
+        const annotationsPlainLine = [
+          {note: {
+              label: "Austria withdrew in '38 as a result of Nazi Germany's annexation of the country."
+            },
+            data: { year: 1938, rank: 5.7 },
+            dy: 35,
+            dx: 0
+          },
+          {
+            note: {
+              label: "Germany and Japan were banned during the 1950 games."
+            },
+            data: { year: 1950, rank: 6 },
+            dy: 105,
+            dx: 0
+          },
+          {
+            note: {
+              label: "A unique format was used in the 1954 Cup; hence, there were no quarterfinals."
+            },
+            data: { year: 1954, rank: 6 },
+            dy: 165,
+            dx: 0
+          }
+        ]
+
+        const makeAnnotations = d3.annotation()
+          // .editMode(true)
+          .textWrap(100)
+          .type(type)
+          .accessors({
+            x: d => x(d.year)-5,
+            y: d => y(d.rank)+5
+          })
+          .annotations(annotations)
+
+        const makeAnnotationsNoLine = d3.annotation()
+          // .editMode(true)
+          .textWrap(100)
+          .disable(["connector"])
+          .type(type2)
+          .accessors({
+            x: d => x(d.year),
+            y: d => y(d.rank)
+          })
+          .annotations(annotationsNoLine)
+
+        const makeAnnotationsPlainLine = d3.annotation()
+          // .editMode(true)
+          .textWrap(100)
+          .type(type2)
+          .accessors({
+            x: d => x(d.year),
+            y: d => y(d.rank)
+          })
+          .annotations(annotationsPlainLine)
+
+        d3.select("svg")
+          .append("g")
+          .attr("class", "annotation-group")
+          .call(makeAnnotations)
+
+        d3.select("svg")
+          .append("g")
+          .attr("class", "annotation-group2")
+          .call(makeAnnotationsNoLine)
+
+        d3.select("svg")
+          .append("g")
+          .attr("class", "annotation-group3")
+          .call(makeAnnotationsPlainLine)
+
+        });
+</script>
